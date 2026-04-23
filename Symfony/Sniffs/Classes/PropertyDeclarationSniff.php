@@ -78,15 +78,27 @@ class PropertyDeclarationSniff implements Sniff
                 $scope = $tokens[$scope]['scope_closer'];
                 continue;
             }
+
             $scope = $phpcsFile->findNext(
                 $wantedTokens,
                 $scope + 1,
                 $end
             );
 
-            if ($scope && $tokens[$scope + 2]['code'] === T_VARIABLE
+            if ($tokens[$scope + 2]['code'] === T_VARIABLE
                 && $tokens[$scope]['code'] !== T_ANON_CLASS
             ) {
+                $funcPtr = $phpcsFile->findPrevious(T_FUNCTION, $scope, $stackPtr);
+                if ($funcPtr !== false
+                    && isset($tokens[$funcPtr]['scope_closer'])
+                    && $tokens[$funcPtr]['scope_closer'] > $scope
+                ) {
+                    $namePtr = $phpcsFile->findNext(T_STRING, $funcPtr, $scope);
+                    if ($namePtr !== false && $tokens[$namePtr]['content'] === '__construct') {
+                        continue;
+                    }
+                }
+
                 $phpcsFile->addError(
                     'Declare class properties before methods',
                     $scope,
